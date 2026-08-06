@@ -1,0 +1,6 @@
+{
+  "name": "ChromaGrain Studio",
+  "description": "Enterprise procedural abstract grainy gradient generator with 8K rendering, OffscreenCanvas Web Workers, anti-banding dithering, Camera Raw post-processing, and microstock metadata export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
