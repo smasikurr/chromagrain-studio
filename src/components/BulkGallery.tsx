@@ -169,10 +169,23 @@ export const BulkGallery: React.FC<BulkGalleryProps> = ({
                   const targetItems = selectedIds.length > 0 ? items.filter(i => selectedIds.includes(i.id)) : items;
                   targetItems.forEach(item => handleDownloadSingle(item, 'jpeg'));
                 }}
-                className="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-lg flex items-center space-x-1.5 shadow-sm"
+                className="px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-800 rounded-lg flex items-center space-x-1.5"
+                title="Export high-resolution JPEG files"
+              >
+                <Download className="w-3.5 h-3.5 text-neutral-400" />
+                <span>Export JPG ({selectedIds.length > 0 ? selectedIds.length : items.length})</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  const targetItems = selectedIds.length > 0 ? items.filter(i => selectedIds.includes(i.id)) : items;
+                  targetItems.forEach(item => handleDownloadSingle(item, 'png'));
+                }}
+                className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold rounded-lg flex items-center space-x-1.5 shadow-sm"
+                title="Export as PNG (Preserves 100% transparent background for Halftones)"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Export JPG ({selectedIds.length > 0 ? selectedIds.length : items.length})</span>
+                <span>Export PNG ({selectedIds.length > 0 ? selectedIds.length : items.length})</span>
               </button>
 
               <button
@@ -382,7 +395,7 @@ export const BulkGallery: React.FC<BulkGalleryProps> = ({
                 </div>
 
                 {/* Hover Action Buttons */}
-                <div className="grid grid-cols-5 gap-1 pt-1 border-t border-neutral-850 text-neutral-400">
+                <div className="grid grid-cols-6 gap-1 pt-1 border-t border-neutral-850 text-neutral-400">
                   <button
                     onClick={() => onSelectItemToEdit(item)}
                     className="p-1.5 hover:bg-neutral-800 hover:text-white rounded flex justify-center"
@@ -426,10 +439,19 @@ export const BulkGallery: React.FC<BulkGalleryProps> = ({
                   </button>
 
                   <button
+                    onClick={() => handleDownloadSingle(item, 'png')}
+                    disabled={isDownloading}
+                    className="p-1.5 hover:bg-neutral-800 hover:text-purple-400 rounded flex justify-center text-[10px] font-mono font-bold"
+                    title="Download High-Res PNG (Supports Transparent Alpha Halftone)"
+                  >
+                    PNG
+                  </button>
+
+                  <button
                     onClick={() => handleDownloadSingle(item, 'jpeg')}
                     disabled={isDownloading}
                     className="p-1.5 hover:bg-neutral-800 hover:text-violet-400 rounded flex justify-center"
-                    title="Download 8K High-Res JPG"
+                    title="Download High-Res JPG"
                   >
                     <Download className="w-3.5 h-3.5" />
                   </button>

@@ -558,11 +558,46 @@ export default function App() {
             gradient={gradient}
             setGradient={setGradient}
             noise={noise}
+            setNoise={setNoise}
             cameraRaw={cameraRaw}
+            setCameraRaw={setCameraRaw}
             blur={blur}
+            setBlur={setBlur}
             filterGallery={filterGallery}
+            setFilterGallery={setFilterGallery}
             batchSettings={batchSettings}
+            setBatchSettings={setBatchSettings}
             onRandomizeCurrent={handleRandomizeColors}
+            onSaveCurrentToBatch={() => {
+              const newItem: BatchItem = {
+                id: 'canvas_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+                name: `Custom_${gradient.style.toUpperCase()}_${Date.now().toString().slice(-4)}`,
+                seedCode: 'CHROMA-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+                timestamp: Date.now(),
+                gradient: JSON.parse(JSON.stringify(gradient)),
+                noise: JSON.parse(JSON.stringify(noise)),
+                cameraRaw: JSON.parse(JSON.stringify(cameraRaw)),
+                blur: blur ? JSON.parse(JSON.stringify(blur)) : undefined,
+                filterGallery: filterGallery ? JSON.parse(JSON.stringify(filterGallery)) : undefined,
+                colorRules: JSON.parse(JSON.stringify(colorRules)),
+                metadata: {
+                  title: `${gradient.style.charAt(0).toUpperCase() + gradient.style.slice(1)} Gradient Art`,
+                  description: `High-resolution procedural ${gradient.style} background with film grain texture.`,
+                  keywords: ['gradient', gradient.style, 'abstract', 'background', 'texture', 'high resolution', 'commercial asset'],
+                  category: 'Backgrounds',
+                  primaryColors: gradient.colors.map(c => c.color),
+                  mood: 'Vibrant'
+                },
+                dimensions: getDimensionsFromPreset(
+                  batchSettings.resolution,
+                  batchSettings.aspectRatio,
+                  batchSettings.customWidth,
+                  batchSettings.customHeight
+                ),
+                favorite: false
+              };
+              setItems(prev => [newItem, ...prev]);
+            }}
           />
         </div>
       </div>

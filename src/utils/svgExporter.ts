@@ -97,9 +97,10 @@ function generateNativeVectorBase(gradient: GradientConfig, width: number, heigh
 
       const gradId = 'svg_lin_grad';
       let stops = '';
-      colors.forEach((color, i) => {
-        const offset = Math.round((i / Math.max(1, colors.length - 1)) * 100);
-        stops += `\n    <stop offset="${offset}%" stop-color="${color}" />`;
+      gradient.colors.forEach((node, i) => {
+        const offset = Math.round((i / Math.max(1, gradient.colors.length - 1)) * 100);
+        const op = node.opacity !== undefined ? node.opacity : 1;
+        stops += `\n    <stop offset="${offset}%" stop-color="${node.color}" stop-opacity="${op}" />`;
       });
 
       defs.push(`<linearGradient id="${gradId}" x1="${x1}%" y1="${y1}%" x2="${x2}%" y2="${y2}%">${stops}\n  </linearGradient>`);
@@ -110,9 +111,10 @@ function generateNativeVectorBase(gradient: GradientConfig, width: number, heigh
     case 'radial': {
       const gradId = 'svg_rad_grad';
       let stops = '';
-      colors.forEach((color, i) => {
-        const offset = Math.round((i / Math.max(1, colors.length - 1)) * 100);
-        stops += `\n    <stop offset="${offset}%" stop-color="${color}" />`;
+      gradient.colors.forEach((node, i) => {
+        const offset = Math.round((i / Math.max(1, gradient.colors.length - 1)) * 100);
+        const op = node.opacity !== undefined ? node.opacity : 1;
+        stops += `\n    <stop offset="${offset}%" stop-color="${node.color}" stop-opacity="${op}" />`;
       });
 
       defs.push(`<radialGradient id="${gradId}" cx="50%" cy="50%" r="60%">${stops}\n  </radialGradient>`);
@@ -129,12 +131,13 @@ function generateNativeVectorBase(gradient: GradientConfig, width: number, heigh
         const cy = Math.round(node.position.y * height);
         const radius = Math.round((node.radius || 0.4) * Math.max(width, height));
         const rgb = hexToRgb(node.color);
+        const op = node.opacity !== undefined ? node.opacity : 1;
 
         const gradId = `blob_grad_${idx}`;
         defs.push(`
   <radialGradient id="${gradId}" cx="50%" cy="50%" r="50%">
-    <stop offset="0%" stop-color="rgb(${rgb.r},${rgb.g},${rgb.b})" stop-opacity="0.95" />
-    <stop offset="50%" stop-color="rgb(${rgb.r},${rgb.g},${rgb.b})" stop-opacity="0.5" />
+    <stop offset="0%" stop-color="rgb(${rgb.r},${rgb.g},${rgb.b})" stop-opacity="${(0.95 * op).toFixed(2)}" />
+    <stop offset="50%" stop-color="rgb(${rgb.r},${rgb.g},${rgb.b})" stop-opacity="${(0.5 * op).toFixed(2)}" />
     <stop offset="100%" stop-color="rgb(${rgb.r},${rgb.g},${rgb.b})" stop-opacity="0" />
   </radialGradient>`);
 

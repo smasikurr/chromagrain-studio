@@ -537,33 +537,61 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {/* Color Pickers */}
               <div className="space-y-2 bg-neutral-950 p-2.5 rounded-lg border border-neutral-800">
                 <div className="text-[10px] text-neutral-400 uppercase font-mono tracking-wider mb-1">Color Palette & Lock Controls</div>
-                <div className="grid grid-cols-1 gap-1.5">
+                <div className="grid grid-cols-1 gap-2">
                   {gradient.colors.map((node, index) => (
-                    <div key={node.id} className="flex items-center space-x-2 bg-neutral-900 p-1.5 rounded border border-neutral-800">
-                      <input
-                        type="color"
-                        value={node.color}
-                        onChange={e => updateColorHex(index, e.target.value)}
-                        className="w-6 h-6 rounded border-0 cursor-pointer bg-transparent"
-                      />
-                      <input
-                        type="text"
-                        value={node.color}
-                        onChange={e => updateColorHex(index, e.target.value)}
-                        className="w-20 bg-neutral-950 border border-neutral-800 rounded px-1.5 py-0.5 text-neutral-300 font-mono text-[11px]"
-                      />
-                      <span className="text-[10px] text-neutral-400 font-mono flex-1">
-                        Node {index + 1} ({Math.round(node.position.x * 100)}%, {Math.round(node.position.y * 100)}%)
-                      </span>
-                      <button
-                        onClick={() => toggleColorLock(index)}
-                        className={`p-1 rounded transition-colors ${
-                          node.locked ? 'text-amber-400 bg-amber-400/10 border border-amber-400/30' : 'text-neutral-400 hover:text-white'
-                        }`}
-                        title={node.locked ? 'Locked' : 'Unlocked'}
-                      >
-                        {node.locked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-                      </button>
+                    <div key={node.id} className="bg-neutral-900 p-2 rounded-lg border border-neutral-800 space-y-1.5">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="color"
+                          value={node.color}
+                          onChange={e => updateColorHex(index, e.target.value)}
+                          className="w-6 h-6 rounded border-0 cursor-pointer bg-transparent"
+                        />
+                        <input
+                          type="text"
+                          value={node.color}
+                          onChange={e => updateColorHex(index, e.target.value)}
+                          className="w-20 bg-neutral-950 border border-neutral-800 rounded px-1.5 py-0.5 text-neutral-300 font-mono text-[11px] uppercase"
+                        />
+                        <span className="text-[10px] text-neutral-400 font-mono flex-1">
+                          Node {index + 1} ({Math.round(node.position.x * 100)}%, {Math.round(node.position.y * 100)}%)
+                        </span>
+                        <button
+                          onClick={() => toggleColorLock(index)}
+                          className={`p-1 rounded transition-colors ${
+                            node.locked ? 'text-amber-400 bg-amber-400/10 border border-amber-400/30' : 'text-neutral-400 hover:text-white'
+                          }`}
+                          title={node.locked ? 'Locked' : 'Unlocked'}
+                        >
+                          {node.locked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+
+                      {/* Opacity Slider */}
+                      <div className="flex items-center space-x-2 pt-0.5 text-[10px] text-neutral-400">
+                        <span className="shrink-0 w-12 font-medium">Opacity</span>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="1"
+                          value={Math.round((node.opacity ?? 1) * 100)}
+                          onChange={e => {
+                            const val = parseFloat(e.target.value) / 100;
+                            setGradient(prev => {
+                              const colors = [...prev.colors];
+                              if (colors[index]) {
+                                colors[index] = { ...colors[index], opacity: val };
+                              }
+                              return { ...prev, colors };
+                            });
+                          }}
+                          className="w-full h-1 bg-neutral-800 rounded appearance-none cursor-pointer accent-fuchsia-500"
+                        />
+                        <span className="font-mono text-fuchsia-300 w-8 text-right font-medium">
+                          {Math.round((node.opacity ?? 1) * 100)}%
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1177,6 +1205,110 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <option value="pop_art">Pop Art Retro (Heavy Dots)</option>
                       <option value="custom">Custom Angle Matrix</option>
                     </select>
+                  </div>
+
+                  {/* Transparent Background Toggle for Halftone PNG */}
+                  <div className="p-2.5 rounded-lg bg-purple-950/20 border border-purple-800/40 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-5 h-5 rounded bg-[linear-gradient(45deg,#333_25%,transparent_25%),linear-gradient(-45deg,#333_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#333_75%),linear-gradient(-45deg,transparent_75%,#333_75%)] bg-[size:6px_6px] bg-[#111] border border-neutral-700" />
+                        <div>
+                          <div className="text-[11px] font-semibold text-purple-200">Transparent Background</div>
+                          <div className="text-[9px] text-purple-300/70">Export pure dots over 100% transparent PNG</div>
+                        </div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={filterGallery.halftone.transparentBackground || false}
+                        onChange={e => setFilterGallery(prev => ({
+                          ...prev,
+                          halftone: { ...prev.halftone, transparentBackground: e.target.checked }
+                        }))}
+                        className="w-4 h-4 rounded border-purple-700 bg-neutral-900 text-purple-500 focus:ring-0 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Dot Color Style Selector */}
+                    <div className="pt-1.5 space-y-1.5 border-t border-purple-900/30">
+                      <label className="block text-[10px] text-neutral-400 font-medium">Dot Color Style</label>
+                      <div className="grid grid-cols-3 gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setFilterGallery(prev => ({
+                            ...prev,
+                            halftone: { ...prev.halftone, colorMode: 'cmyk' }
+                          }))}
+                          className={`py-1 rounded text-[10px] font-medium transition-all ${
+                            (filterGallery.halftone.colorMode || 'cmyk') === 'cmyk'
+                              ? 'bg-purple-600/40 text-purple-200 border border-purple-500 font-bold'
+                              : 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-neutral-300'
+                          }`}
+                        >
+                          CMYK Inks
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFilterGallery(prev => ({
+                            ...prev,
+                            halftone: { ...prev.halftone, colorMode: 'source_gradient' }
+                          }))}
+                          className={`py-1 rounded text-[10px] font-medium transition-all ${
+                            filterGallery.halftone.colorMode === 'source_gradient'
+                              ? 'bg-purple-600/40 text-purple-200 border border-purple-500 font-bold'
+                              : 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-neutral-300'
+                          }`}
+                        >
+                          Gradient
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFilterGallery(prev => ({
+                            ...prev,
+                            halftone: { ...prev.halftone, colorMode: 'monochrome' }
+                          }))}
+                          className={`py-1 rounded text-[10px] font-medium transition-all ${
+                            filterGallery.halftone.colorMode === 'monochrome'
+                              ? 'bg-purple-600/40 text-purple-200 border border-purple-500 font-bold'
+                              : 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-neutral-300'
+                          }`}
+                        >
+                          Monochrome
+                        </button>
+                      </div>
+
+                      {/* Custom monochrome ink color picker */}
+                      {filterGallery.halftone.colorMode === 'monochrome' && (
+                        <div className="flex items-center space-x-2 pt-1">
+                          <label className="text-[10px] text-neutral-400">Ink Color:</label>
+                          <input
+                            type="color"
+                            value={filterGallery.halftone.foreColor || '#000000'}
+                            onChange={e => setFilterGallery(prev => ({
+                              ...prev,
+                              halftone: { ...prev.halftone, foreColor: e.target.value }
+                            }))}
+                            className="w-6 h-6 rounded bg-neutral-900 border border-neutral-700 cursor-pointer p-0.5"
+                          />
+                          <span className="text-[10px] font-mono text-purple-300 uppercase">
+                            {filterGallery.halftone.foreColor || '#000000'}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Invert dots/voids toggle */}
+                      <div className="flex items-center justify-between pt-1">
+                        <span className="text-[10px] text-neutral-400">Invert Dots / Voids</span>
+                        <input
+                          type="checkbox"
+                          checked={filterGallery.halftone.dotInvert || false}
+                          onChange={e => setFilterGallery(prev => ({
+                            ...prev,
+                            halftone: { ...prev.halftone, dotInvert: e.target.checked }
+                          }))}
+                          className="w-3.5 h-3.5 rounded border-neutral-700 bg-neutral-900 text-purple-500 focus:ring-0 cursor-pointer"
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   {/* Max Radius Control (Slider & Numeric Input) */}

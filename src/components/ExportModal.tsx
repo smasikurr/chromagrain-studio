@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Code, Copy, Check, X, Sparkles, FileCode } from 'lucide-react';
+import { Code, Copy, Check, X, Sparkles, FileCode, Download } from 'lucide-react';
 import { BatchItem } from '../types';
 import { generateCSSCode } from '../utils/metadata';
 import { downloadSingleSVG } from '../utils/svgExporter';
+import { renderHighResBlob } from '../utils/worker';
 
 interface ExportModalProps {
   item: BatchItem | null;
@@ -13,6 +14,7 @@ interface ExportModalProps {
 export const ExportModal: React.FC<ExportModalProps> = ({ item, isOpen, onClose }) => {
   const [copied, setCopied] = useState(false);
   const [downloadingSVG, setDownloadingSVG] = useState(false);
+  const [downloadingPNG, setDownloadingPNG] = useState(false);
 
   if (!isOpen || !item) return null;
 
@@ -35,6 +37,25 @@ export const ExportModal: React.FC<ExportModalProps> = ({ item, isOpen, onClose 
     }
   };
 
+  const handleDownloadPNG = async () => {
+    try {
+      setDownloadingPNG(true);
+      const blob = await renderHighResBlob(item, item.dimensions.width, item.dimensions.height, 'image/png', 1.0);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${item.name.replace(/\s+/g, '_')}_${item.dimensions.width}x${item.dimensions.height}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to download PNG:', err);
+    } finally {
+      setDownloadingPNG(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 select-none">
       <div className="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-150">
@@ -45,8 +66,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({ item, isOpen, onClose 
               <Code className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">Export Responsive CSS & SVG Noise</h3>
-              <p className="text-xs text-neutral-400">Pure CSS radial-gradient + embedded data URI noise layer</p>
+              <h3 className="text-sm font-bold text-white">Export Responsive CSS & Asset Files</h3>
+              <p className="text-xs text-neutral-400">Pure CSS gradient code, Transparent PNG, and Vector SVG</p>
             </div>
           </div>
           <button
@@ -75,22 +96,33 @@ export const ExportModal: React.FC<ExportModalProps> = ({ item, isOpen, onClose 
           <div className="bg-neutral-950 p-3 rounded-xl border border-neutral-850 text-xs text-neutral-400 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Sparkles className="w-4 h-4 text-violet-400 shrink-0" />
-              <span>No external images required. Works across all modern browsers.</span>
+              <span>Alpha transparency preserved for Halftone dots and opacity nodes.</span>
             </div>
-            <span className="font-mono text-[10px] text-neutral-400">Zero Dependencies</span>
+            <span className="font-mono text-[10px] text-purple-400">PNG Alpha Ready</span>
           </div>
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 border-t border-neutral-800 bg-neutral-950 flex items-center justify-between">
-          <button
-            onClick={handleDownloadSVG}
-            disabled={downloadingSVG}
-            className="px-4 py-2 bg-gradient-to-r from-fuchsia-600 to-pink-600 hover:from-fuchsia-500 hover:to-pink-500 text-white text-xs font-semibold rounded-lg flex items-center space-x-1.5 shadow-sm transition-all disabled:opacity-50"
-          >
-            <FileCode className="w-3.5 h-3.5" />
-            <span>{downloadingSVG ? 'Generating SVG...' : 'Download Vector SVG'}</span>
-          </button>
+        <div className="p-4 border-t border-neutral-800 bg-neutral-950 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleDownloadPNG}
+              disabled={downloadingPNG}
+              className="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-semibold rounded-lg flex items-center space-x-1.5 shadow-sm transition-all disabled:opacity-50"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>{downloadingPNG ? 'Generating PNG...' : 'Download High-Res PNG'}</span>
+            </button>
+
+            <button
+              onClick={handleDownloadSVG}
+              disabled={downloadingSVG}
+              className="px-3.5 py-2 bg-gradient-to-r from-fuchsia-600 to-pink-600 hover:from-fuchsia-500 hover:to-pink-500 text-white text-xs font-semibold rounded-lg flex items-center space-x-1.5 shadow-sm transition-all disabled:opacity-50"
+            >
+              <FileCode className="w-3.5 h-3.5" />
+              <span>{downloadingSVG ? 'Generating SVG...' : 'Download Vector SVG'}</span>
+            </button>
+          </div>
 
           <button
             onClick={onClose}

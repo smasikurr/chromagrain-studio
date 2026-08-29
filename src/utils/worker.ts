@@ -74,7 +74,7 @@ export async function renderHighResBlob(
   item: BatchItem,
   width: number,
   height: number,
-  format: 'image/jpeg' | 'image/png' = 'image/jpeg',
+  format: 'image/jpeg' | 'image/png' | 'image/webp' = 'image/jpeg',
   quality = 0.98
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -110,7 +110,7 @@ function fallbackCanvasRender(
   item: BatchItem,
   width: number,
   height: number,
-  format: 'image/jpeg' | 'image/png',
+  format: 'image/jpeg' | 'image/png' | 'image/webp',
   quality: number
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {

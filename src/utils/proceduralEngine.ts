@@ -113,10 +113,11 @@ export function renderFloat32ProceduralBuffer(
 
   if (colors.length === 0) return floatBuffer;
 
-  // Convert colors to Float32 RGB tuples
+  // Convert colors to Float32 RGBA tuples
   const floatColors = colors.map(c => {
     const rgb = hexToRgb(c.color);
-    return [rgb.r / 255.0, rgb.g / 255.0, rgb.b / 255.0];
+    const alpha = c.opacity !== undefined ? Math.max(0, Math.min(1, c.opacity)) : 1;
+    return [rgb.r / 255.0, rgb.g / 255.0, rgb.b / 255.0, alpha];
   });
 
   // Evaluate each layer in Float32 precision

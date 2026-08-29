@@ -62,6 +62,7 @@ export type GrainBlendMode =
 export interface ColorNode {
   id: string;
   color: string;
+  opacity?: number; // 0 to 1, default 1
   position: { x: number; y: number }; // 0-1 percentage
   locked: boolean;
   radius?: number; // for blob/radial
@@ -105,6 +106,9 @@ export interface HalftoneConfig {
   blendMode: GrainBlendMode;
   foreColor?: string;
   backColor?: string;
+  transparentBackground?: boolean; // When true: Background is 100% transparent PNG with alpha=0
+  colorMode?: 'cmyk' | 'source_gradient' | 'monochrome';
+  dotInvert?: boolean;
 }
 
 export interface GrungyTextureConfig {

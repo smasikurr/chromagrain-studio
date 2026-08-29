@@ -1,5 +1,5 @@
 import { BatchItem, ItemMetadata } from '../types';
-import { getPrimaryColorNames } from './color';
+import { getPrimaryColorNames, hexToRgb } from './color';
 
 const MOOD_KEYWORDS: Record<string, string[]> = {
   mesh: ['abstract', 'fluid', 'mesh gradient', 'digital wave', 'modern background', 'liquid color', 'subtle glow'],
@@ -114,7 +114,15 @@ export function generateMicrostockCSV(items: BatchItem[]): string {
  * Export Responsive CSS code with inline SVG noise data URI
  */
 export function generateCSSCode(item: BatchItem): string {
-  const colors = item.gradient.colors.map(c => c.color);
+  const getNodeColorCss = (node: { color: string; opacity?: number }) => {
+    if (node.opacity !== undefined && node.opacity < 1) {
+      const rgb = hexToRgb(node.color);
+      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${node.opacity})`;
+    }
+    return node.color;
+  };
+
+  const colors = item.gradient.colors.map(c => getNodeColorCss(c));
   let backgroundGradient = '';
 
   switch (item.gradient.style) {
@@ -131,7 +139,7 @@ export function generateCSSCode(item: BatchItem): string {
     case 'mesh':
     default: {
       const stops = item.gradient.colors.map(c =>
-        `radial-gradient(at ${Math.round(c.position.x * 100)}% ${Math.round(c.position.y * 100)}%, ${c.color} 0px, transparent 55%)`
+        `radial-gradient(at ${Math.round(c.position.x * 100)}% ${Math.round(c.position.y * 100)}%, ${getNodeColorCss(c)} 0px, transparent 55%)`
       );
       backgroundGradient = stops.join(',\n    ') + `,\n    ${colors[0] || '#0d1117'}`;
       break;

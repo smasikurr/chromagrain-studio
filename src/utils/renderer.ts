@@ -1,4 +1,4 @@
-import { GradientConfig, NoiseConfig, CameraRawConfig, BlurConfig, FilterGalleryConfig, GrainBlendMode, VolumetricLightingConfig } from '../types';
+import { GradientConfig, NoiseConfig, CameraRawConfig, BlurConfig, FilterGalleryConfig, GrainBlendMode, VolumetricLightingConfig, ColorNode } from '../types';
 import { hexToRgb, rgbToHsl, hslToRgb } from './color';
 import { simplex2D, gaussianRandom, spatialDitherValue } from './noise';
 import { generateProceduralPattern, renderFloat32ProceduralBuffer, convertFloat32ToImageData } from './proceduralEngine';
@@ -71,7 +71,14 @@ function renderBaseGradient(
   h: number,
   config: GradientConfig
 ): void {
-  const colors = config.colors.map(c => c.color);
+  const getNodeRgba = (node: ColorNode, factor = 1): string => {
+    const rgb = hexToRgb(node.color);
+    const alpha = (node.opacity !== undefined ? Math.max(0, Math.min(1, node.opacity)) : 1) * factor;
+    return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+  };
+
+  const colors = config.colors.map(c => getNodeRgba(c, 1));
+  const baseBg = getNodeRgba(config.colors[0] || { id: '0', color: '#000000', position: { x: 0, y: 0 }, locked: false, opacity: 1 }, 1);
 
   // Master Toggle: Use 16-Bit Precision Float32 Procedural Engine if enabled and present
   if (config.proceduralEnabled !== false && (config.style === 'freeform' || config.proceduralConfig)) {
@@ -92,8 +99,8 @@ function renderBaseGradient(
       const y2 = h / 2 + Math.sin(rad) * h * 0.5;
 
       const grad = ctx.createLinearGradient(x1, y1, x2, y2);
-      colors.forEach((color, i) => {
-        grad.addColorStop(i / Math.max(1, colors.length - 1), color);
+      config.colors.forEach((node, i) => {
+        grad.addColorStop(i / Math.max(1, config.colors.length - 1), getNodeRgba(node));
       });
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
@@ -104,8 +111,8 @@ function renderBaseGradient(
       const cy = h * 0.5;
       const maxR = Math.hypot(w, h) * 0.6;
       const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
-      colors.forEach((color, i) => {
-        grad.addColorStop(i / Math.max(1, colors.length - 1), color);
+      config.colors.forEach((node, i) => {
+        grad.addColorStop(i / Math.max(1, config.colors.length - 1), getNodeRgba(node));
       });
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
@@ -117,15 +124,15 @@ function renderBaseGradient(
       const rad = (config.angle * Math.PI) / 180;
       if (typeof ctx.createConicGradient === 'function') {
         const grad = ctx.createConicGradient(rad, cx, cy);
-        colors.forEach((color, i) => {
-          grad.addColorStop(i / Math.max(1, colors.length - 1), color);
+        config.colors.forEach((node, i) => {
+          grad.addColorStop(i / Math.max(1, config.colors.length - 1), getNodeRgba(node));
         });
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, w, h);
       } else {
         const grad = ctx.createLinearGradient(0, 0, w, h);
-        colors.forEach((color, i) => {
-          grad.addColorStop(i / Math.max(1, colors.length - 1), color);
+        config.colors.forEach((node, i) => {
+          grad.addColorStop(i / Math.max(1, config.colors.length - 1), getNodeRgba(node));
         });
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, w, h);
@@ -133,19 +140,18 @@ function renderBaseGradient(
       break;
     }
     case 'blob': {
-      ctx.fillStyle = colors[0] || '#0d1117';
+      ctx.fillStyle = baseBg;
       ctx.fillRect(0, 0, w, h);
 
-      config.colors.forEach((node, i) => {
+      config.colors.forEach((node) => {
         const bx = node.position.x * w;
         const by = node.position.y * h;
         const radius = (node.radius || 0.4) * Math.max(w, h);
 
         const grad = ctx.createRadialGradient(bx, by, 0, bx, by, radius);
-        const rgb = hexToRgb(node.color);
-        grad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.95)`);
-        grad.addColorStop(0.5, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.5)`);
-        grad.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+        grad.addColorStop(0, getNodeRgba(node, 0.95));
+        grad.addColorStop(0.5, getNodeRgba(node, 0.5));
+        grad.addColorStop(1, getNodeRgba(node, 0));
 
         ctx.fillStyle = grad;
         ctx.beginPath();
@@ -155,16 +161,15 @@ function renderBaseGradient(
       break;
     }
     case 'aurora': {
-      ctx.fillStyle = colors[0] || '#050b14';
+      ctx.fillStyle = baseBg;
       ctx.fillRect(0, 0, w, h);
 
       config.colors.forEach((node, idx) => {
-        const rgb = hexToRgb(node.color);
         const yOffset = node.position.y * h;
         const grad = ctx.createLinearGradient(0, yOffset - h * 0.3, 0, yOffset + h * 0.3);
-        grad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
-        grad.addColorStop(0.5, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.85)`);
-        grad.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+        grad.addColorStop(0, getNodeRgba(node, 0));
+        grad.addColorStop(0.5, getNodeRgba(node, 0.85));
+        grad.addColorStop(1, getNodeRgba(node, 0));
 
         ctx.fillStyle = grad;
         ctx.beginPath();
@@ -183,14 +188,13 @@ function renderBaseGradient(
       break;
     }
     case 'fluid': {
-      ctx.fillStyle = colors[0] || '#0d0d1a';
+      ctx.fillStyle = baseBg;
       ctx.fillRect(0, 0, w, h);
 
       config.colors.forEach((node, idx) => {
         const cx = node.position.x * w;
         const cy = node.position.y * h;
         const radius = (node.radius || 0.5) * Math.max(w, h);
-        const rgb = hexToRgb(node.color);
 
         ctx.save();
         ctx.translate(cx, cy);
@@ -198,9 +202,9 @@ function renderBaseGradient(
         ctx.scale(1.4, 0.7);
 
         const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
-        grad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.9)`);
-        grad.addColorStop(0.6, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.4)`);
-        grad.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+        grad.addColorStop(0, getNodeRgba(node, 0.9));
+        grad.addColorStop(0.6, getNodeRgba(node, 0.4));
+        grad.addColorStop(1, getNodeRgba(node, 0));
 
         ctx.fillStyle = grad;
         ctx.beginPath();
@@ -213,19 +217,18 @@ function renderBaseGradient(
     case 'spiral': {
       const cx = w * 0.5;
       const cy = h * 0.5;
-      ctx.fillStyle = colors[0] || '#0a0a0f';
+      ctx.fillStyle = baseBg;
       ctx.fillRect(0, 0, w, h);
 
       const maxR = Math.hypot(w, h) * 0.75;
       config.colors.forEach((node, idx) => {
-        const rgb = hexToRgb(node.color);
         const startAngle = (config.angle * Math.PI) / 180 + (idx * Math.PI * 2) / config.colors.length;
         const endAngle = startAngle + Math.PI * 1.5;
 
         const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
-        grad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.85)`);
-        grad.addColorStop(0.7, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3)`);
-        grad.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+        grad.addColorStop(0, getNodeRgba(node, 0.85));
+        grad.addColorStop(0.7, getNodeRgba(node, 0.3));
+        grad.addColorStop(1, getNodeRgba(node, 0));
 
         ctx.fillStyle = grad;
         ctx.beginPath();
@@ -237,16 +240,15 @@ function renderBaseGradient(
       break;
     }
     case 'glass_wave': {
-      ctx.fillStyle = colors[0] || '#10121a';
+      ctx.fillStyle = baseBg;
       ctx.fillRect(0, 0, w, h);
 
-      config.colors.forEach((node, idx) => {
-        const rgb = hexToRgb(node.color);
+      config.colors.forEach((node) => {
         const yPos = node.position.y * h;
         const grad = ctx.createLinearGradient(0, yPos - 120, w, yPos + 120);
-        grad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`);
-        grad.addColorStop(0.5, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.8)`);
-        grad.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.05)`);
+        grad.addColorStop(0, getNodeRgba(node, 0.1));
+        grad.addColorStop(0.5, getNodeRgba(node, 0.8));
+        grad.addColorStop(1, getNodeRgba(node, 0.05));
 
         ctx.fillStyle = grad;
         ctx.beginPath();
@@ -268,15 +270,14 @@ function renderBaseGradient(
         h / 2 + Math.sin(rad) * h * 0.5
       );
       config.colors.forEach((node, i) => {
-        grad.addColorStop(i / Math.max(1, config.colors.length - 1), node.color);
+        grad.addColorStop(i / Math.max(1, config.colors.length - 1), getNodeRgba(node));
       });
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
 
       // Chromatic Overlay Waves
       config.colors.forEach((node, idx) => {
-        const rgb = hexToRgb(node.color);
-        ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.25)`;
+        ctx.fillStyle = getNodeRgba(node, 0.25);
         ctx.fillRect((idx * w) / config.colors.length, 0, w / config.colors.length, h);
       });
       break;
@@ -284,7 +285,7 @@ function renderBaseGradient(
     case 'diamond': {
       const cx = w * 0.5;
       const cy = h * 0.5;
-      ctx.fillStyle = colors[0] || '#0d1117';
+      ctx.fillStyle = baseBg;
       ctx.fillRect(0, 0, w, h);
 
       config.colors.forEach((node, i) => {
@@ -293,10 +294,9 @@ function renderBaseGradient(
         const size = (node.radius || 0.45) * Math.hypot(w, h);
 
         const grad = ctx.createRadialGradient(bx, by, 0, bx, by, size);
-        const rgb = hexToRgb(node.color);
-        grad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.95)`);
-        grad.addColorStop(0.6, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.4)`);
-        grad.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+        grad.addColorStop(0, getNodeRgba(node, 0.95));
+        grad.addColorStop(0.6, getNodeRgba(node, 0.4));
+        grad.addColorStop(1, getNodeRgba(node, 0));
 
         ctx.save();
         ctx.translate(bx, by);
@@ -319,15 +319,15 @@ function renderBaseGradient(
       const radOffset = (config.angle * Math.PI) / 180;
       if (typeof ctx.createConicGradient === 'function') {
         const grad = ctx.createConicGradient(radOffset, cx, cy);
-        colors.forEach((color, i) => {
-          grad.addColorStop(i / Math.max(1, colors.length - 1), color);
+        config.colors.forEach((node, i) => {
+          grad.addColorStop(i / Math.max(1, config.colors.length - 1), getNodeRgba(node));
         });
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, w, h);
       } else {
         const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.hypot(w, h) * 0.6);
-        colors.forEach((color, i) => {
-          grad.addColorStop(i / Math.max(1, colors.length - 1), color);
+        config.colors.forEach((node, i) => {
+          grad.addColorStop(i / Math.max(1, config.colors.length - 1), getNodeRgba(node));
         });
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, w, h);
@@ -336,7 +336,7 @@ function renderBaseGradient(
     }
     case 'mesh':
     default: {
-      ctx.fillStyle = colors[0] || '#000000';
+      ctx.fillStyle = baseBg;
       ctx.fillRect(0, 0, w, h);
 
       config.colors.forEach((node, idx) => {
@@ -345,11 +345,10 @@ function renderBaseGradient(
         const meshRadius = (0.45 + (idx % 2 === 0 ? 0.15 : 0)) * Math.hypot(w, h);
 
         const grad = ctx.createRadialGradient(mx, my, 0, mx, my, meshRadius);
-        const rgb = hexToRgb(node.color);
-        grad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.9)`);
-        grad.addColorStop(0.4, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.55)`);
-        grad.addColorStop(0.85, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`);
-        grad.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+        grad.addColorStop(0, getNodeRgba(node, 0.9));
+        grad.addColorStop(0.4, getNodeRgba(node, 0.55));
+        grad.addColorStop(0.85, getNodeRgba(node, 0.1));
+        grad.addColorStop(1, getNodeRgba(node, 0));
 
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, w, h);
@@ -608,6 +607,11 @@ function applyFilterGallery(
       return [c, m, y, k];
     };
 
+    const isTransparentBg = fg.halftone.transparentBackground ?? false;
+    const colorMode = fg.halftone.colorMode || 'cmyk';
+    const dotInvert = fg.halftone.dotInvert ?? false;
+    const customInkRgb = hexToRgb(fg.halftone.foreColor || '#000000');
+
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const idx = (y * w + x) * 4;
@@ -650,34 +654,94 @@ function applyFilterGallery(
             isInside = (dx <= dotRadius * 0.4 || dy <= dotRadius * 0.4) && Math.hypot(dx, dy) <= maxRadius;
           }
 
+          if (dotInvert) {
+            isInside = !isInside;
+          }
+
           cmykDots[ch] = isInside;
         }
 
-        // Subtractive CMYK Overprint Simulation
-        let r = 1.0;
-        let g = 1.0;
-        let b = 1.0;
+        const hasAnyDot = cmykDots[0] || cmykDots[1] || cmykDots[2] || cmykDots[3];
 
-        if (cmykDots[0]) r *= 0.08; // Cyan
-        if (cmykDots[1]) g *= 0.08; // Magenta
-        if (cmykDots[2]) b *= 0.05; // Yellow
-        if (cmykDots[3]) {          // Black / Key
-          r *= 0.08;
-          g *= 0.08;
-          b *= 0.08;
+        if (isTransparentBg) {
+          if (!hasAnyDot) {
+            // 100% Fully Transparent Void (Alpha = 0)
+            dstData[idx] = 0;
+            dstData[idx + 1] = 0;
+            dstData[idx + 2] = 0;
+            dstData[idx + 3] = 0;
+          } else {
+            // Active Dot Region on Transparent Canvas
+            if (colorMode === 'source_gradient') {
+              // Retain source gradient color on transparent background
+              dstData[idx] = srcData[idx];
+              dstData[idx + 1] = srcData[idx + 1];
+              dstData[idx + 2] = srcData[idx + 2];
+              dstData[idx + 3] = Math.round(255 * opacity);
+            } else if (colorMode === 'monochrome') {
+              // Custom monochrome ink on transparent background
+              dstData[idx] = customInkRgb.r;
+              dstData[idx + 1] = customInkRgb.g;
+              dstData[idx + 2] = customInkRgb.b;
+              dstData[idx + 3] = Math.round(255 * opacity);
+            } else {
+              // Authentic CMYK Subtractive Inks
+              let r = 1.0;
+              let g = 1.0;
+              let b = 1.0;
+
+              if (cmykDots[0]) { r *= 0.05; g *= 0.70; b *= 0.95; } // Cyan ink
+              if (cmykDots[1]) { r *= 0.92; g *= 0.05; b *= 0.55; } // Magenta ink
+              if (cmykDots[2]) { r *= 0.98; g *= 0.95; b *= 0.02; } // Yellow ink
+              if (cmykDots[3]) { r *= 0.12; g *= 0.12; b *= 0.14; } // Black ink
+
+              dstData[idx] = Math.round(r * 255);
+              dstData[idx + 1] = Math.round(g * 255);
+              dstData[idx + 2] = Math.round(b * 255);
+              dstData[idx + 3] = Math.round(255 * opacity);
+            }
+          }
+        } else {
+          // Standard Opaque Background Overprint
+          if (colorMode === 'monochrome') {
+            if (hasAnyDot) {
+              dstData[idx] = Math.round(srcData[idx] * (1 - opacity) + customInkRgb.r * opacity);
+              dstData[idx + 1] = Math.round(srcData[idx + 1] * (1 - opacity) + customInkRgb.g * opacity);
+              dstData[idx + 2] = Math.round(srcData[idx + 2] * (1 - opacity) + customInkRgb.b * opacity);
+            } else {
+              dstData[idx] = srcData[idx];
+              dstData[idx + 1] = srcData[idx + 1];
+              dstData[idx + 2] = srcData[idx + 2];
+            }
+            dstData[idx + 3] = 255;
+          } else {
+            let r = 1.0;
+            let g = 1.0;
+            let b = 1.0;
+
+            if (cmykDots[0]) r *= 0.08; // Cyan
+            if (cmykDots[1]) g *= 0.08; // Magenta
+            if (cmykDots[2]) b *= 0.05; // Yellow
+            if (cmykDots[3]) {          // Black / Key
+              r *= 0.08;
+              g *= 0.08;
+              b *= 0.08;
+            }
+
+            const origR = srcData[idx];
+            const origG = srcData[idx + 1];
+            const origB = srcData[idx + 2];
+
+            const halftonedR = r * 255;
+            const halftonedG = g * 255;
+            const halftonedB = b * 255;
+
+            dstData[idx] = Math.round(origR * (1 - opacity) + halftonedR * opacity);
+            dstData[idx + 1] = Math.round(origG * (1 - opacity) + halftonedG * opacity);
+            dstData[idx + 2] = Math.round(origB * (1 - opacity) + halftonedB * opacity);
+            dstData[idx + 3] = 255;
+          }
         }
-
-        const origR = srcData[idx];
-        const origG = srcData[idx + 1];
-        const origB = srcData[idx + 2];
-
-        const halftonedR = r * 255;
-        const halftonedG = g * 255;
-        const halftonedB = b * 255;
-
-        dstData[idx] = Math.round(origR * (1 - opacity) + halftonedR * opacity);
-        dstData[idx + 1] = Math.round(origG * (1 - opacity) + halftonedG * opacity);
-        dstData[idx + 2] = Math.round(origB * (1 - opacity) + halftonedB * opacity);
       }
     }
     ctx.putImageData(imageData, 0, 0);
@@ -937,6 +1001,11 @@ function applyPixelManipulations(
   const textureFactor = raw.texture / 100;
 
   for (let i = 0; i < len; i += 4) {
+    // Preserve 100% transparent pixels (alpha = 0) from being overwritten
+    if (data[i + 3] === 0) {
+      continue;
+    }
+
     let r = data[i];
     let g = data[i + 1];
     let b = data[i + 2];
@@ -1089,6 +1158,9 @@ function applyVignetteOverlay(
   const maxRadius = Math.hypot(cx, cy) * (raw.vignetteRoundness / 100 || 0.8);
   const innerRadius = maxRadius * (1 - raw.vignetteFeather / 100);
 
+  const prevComp = ctx.globalCompositeOperation;
+  ctx.globalCompositeOperation = 'source-atop'; // Only apply vignette on existing non-transparent content
+
   const grad = ctx.createRadialGradient(cx, cy, Math.max(0, innerRadius), cx, cy, maxRadius);
   const opacity = (raw.vignetteAmount / 100) * 0.85;
   grad.addColorStop(0, `rgba(0, 0, 0, 0)`);
@@ -1096,4 +1168,6 @@ function applyVignetteOverlay(
 
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
+
+  ctx.globalCompositeOperation = prevComp;
 }
